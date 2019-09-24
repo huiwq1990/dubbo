@@ -191,7 +191,7 @@ public class NacosRegistry extends FailbackRegistry {
         if (scheduledExecutorService != null) {
             scheduledExecutorService.shutdown();
         }
-    }
+    }` `
 
     /**
      * Get the service names from the specified {@link URL url}

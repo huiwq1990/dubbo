@@ -120,7 +120,7 @@ public abstract class Wrapper {
         }
         return ret;
     }
-
+//    生成了invokeMethod方法，最终把这个对象实例化
     private static Wrapper makeWrapper(Class<?> c) {
         if (c.isPrimitive()) {
             throw new IllegalArgumentException("Can not create wrapper for primitive type: " + c);

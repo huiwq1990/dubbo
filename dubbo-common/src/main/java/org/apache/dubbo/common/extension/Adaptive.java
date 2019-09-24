@@ -33,6 +33,10 @@ import java.lang.annotation.Target;
 @Documented
 @Retention(RetentionPolicy.RUNTIME)
 @Target({ElementType.TYPE, ElementType.METHOD})
+/**
+ * 如果加在类上，则代表这个类是adaptive类
+ * org.apache.dubbo.common.extension.ExtensionLoader#loadClass(java.util.Map, java.net.URL, java.lang.Class, java.lang.String)
+ */
 public @interface Adaptive {
     /**
      * Decide which target extension to be injected. The name of the target extension is decided by the parameter passed

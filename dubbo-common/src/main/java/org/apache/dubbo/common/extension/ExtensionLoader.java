@@ -519,20 +519,25 @@ public class ExtensionLoader<T> {
 
     @SuppressWarnings("unchecked")
     private T createExtension(String name) {
+        //1.通过name获取ExtensionClasses，此时为DubboProtocol
         Class<?> clazz = getExtensionClasses().get(name);
         if (clazz == null) {
             throw findException(name);
         }
         try {
+            //2.获取DubboProtocol实例
             T instance = (T) EXTENSION_INSTANCES.get(clazz);
             if (instance == null) {
                 EXTENSION_INSTANCES.putIfAbsent(clazz, clazz.newInstance());
                 instance = (T) EXTENSION_INSTANCES.get(clazz);
             }
+            //3.dubbo的IOC反转控制，就是从spi和spring里面提取对象赋值。
             injectExtension(instance);
+            //通过wrapper类进行封装
             Set<Class<?>> wrapperClasses = cachedWrapperClasses;
             if (CollectionUtils.isNotEmpty(wrapperClasses)) {
                 for (Class<?> wrapperClass : wrapperClasses) {
+                    //4.如果是包装类
                     instance = injectExtension((T) wrapperClass.getConstructor(type).newInstance(instance));
                 }
             }
@@ -550,6 +555,7 @@ public class ExtensionLoader<T> {
         }
 
         try {
+            //1.拿到所有的方法
             for (Method method : instance.getClass().getMethods()) {
                 if (!isSetter(method)) {
                     continue;
@@ -860,6 +866,8 @@ public class ExtensionLoader<T> {
 
     private Class<?> getAdaptiveExtensionClass() {
         getExtensionClasses();
+//        如果cachedAdaptiveClass不为空，那么就返回cachedAdaptiveClass，
+//        刚刚我们在loadFile()方法中讲过，@Adaptive注解在类上，那么就会缓存到cachedAdaptiveClass中，这个时候cachedAdaptiveClass有值
         if (cachedAdaptiveClass != null) {
             return cachedAdaptiveClass;
         }

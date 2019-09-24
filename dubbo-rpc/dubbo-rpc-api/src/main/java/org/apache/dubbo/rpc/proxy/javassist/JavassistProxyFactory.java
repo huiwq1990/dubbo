@@ -35,8 +35,10 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
         return (T) Proxy.getProxy(interfaces).newInstance(new InvokerInvocationHandler(invoker));
     }
 
+    // proxy具体的实现类
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
+//        先看下Wrapper wrapper = Wrapper.getWrapper()方法，传入的参数是proxy.getClass()就是我们的实现类DemoServiveImpl的Class，
         // TODO Wrapper cannot handle this scenario correctly: the classname contains '$'
         final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
         return new AbstractProxyInvoker<T>(proxy, type, url) {
@@ -44,6 +46,7 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
             protected Object doInvoke(T proxy, String methodName,
                                       Class<?>[] parameterTypes,
                                       Object[] arguments) throws Throwable {
+//                Dubbo的消费端来调用服务端的接口的时候，是不是通过这个代理对象中的invokerMethod方法最终去执行接口实现类的代码
                 return wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
             }
         };

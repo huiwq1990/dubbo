@@ -123,6 +123,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
      * A {@link ProxyFactory} implementation that will generate a exported service proxy,the JavassistProxyFactory is its
      * default implementation
      */
+//    proxyFactory是一个动态适配器代理类ProxyFactory$Adpative
     private static final ProxyFactory PROXY_FACTORY = ExtensionLoader.getExtensionLoader(ProxyFactory.class).getAdaptiveExtension();
 
     /**
@@ -450,6 +451,9 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+//        在xml中可以配置多个dubbo:registry，可以把服务发布到多个注册中心
+//        URL是以registry开头的，localhost:2181是我们配置在xml中<dubbo:registry address="zookeeper://localhost:2181"/>
+//        registry://localhost:2181/com.alibaba.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.0&export=dubbo%3A%2F%2F192.168.31.132%3A20880%2Fcom.alibaba.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddemo-provider%26dubbo%3D2.0.0%26generic%3Dfalse%26interface%3Dcom.alibaba.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D948%26side%3Dprovider%26timestamp%3D1538476342717&pid=948&registry=zookeeper&timestamp=1538476342610
         List<URL> registryURLs = loadRegistries(true);
         for (ProtocolConfig protocolConfig : protocols) {
             String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
@@ -569,9 +573,10 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         }
 
         String scope = url.getParameter(SCOPE_KEY);
+//        配置为none不暴露
         // don't export when none is configured
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
-
+            // 暴露本地服务
             // export to local if the config is not remote (export to remote only when config is remote)
             if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
                 exportLocal(url);
@@ -580,6 +585,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
                 if (CollectionUtils.isNotEmpty(registryURLs)) {
                     for (URL registryURL : registryURLs) {
+                        //暴露非injvm
                         //if protocol is only injvm ,not register
                         if (LOCAL_PROTOCOL.equalsIgnoreCase(url.getProtocol())) {
                             continue;
@@ -605,7 +611,8 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
                         Invoker<?> invoker = PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
-
+//                       protocol -> Protocol$Adaptive
+//                        Protocol extension = (Protocol)ExtensionLoader.getExtensionLoader(Protocol.class).getExtension("registry");
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         exporters.add(exporter);
                     }
@@ -636,12 +643,30 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     /**
      * always export injvm
      */
+//    url=dubbo://192.168.31.132:20880/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=demo-provider&dubbo=2.0.0&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=843&side=provider&timestamp=1538464205631
     private void exportLocal(URL url) {
         URL local = URLBuilder.from(url)
                 .setProtocol(LOCAL_PROTOCOL)
                 .setHost(LOCALHOST_VALUE)
                 .setPort(0)
                 .build();
+//        local=injvm://127.0.0.1/com.alibaba.dubbo.demo.DemoService?anyhost=true&application=demo-provider&dubbo=2.0.0&generic=false&interface=com.alibaba.dubbo.demo.DemoService&methods=sayHello&pid=843&side=provider&timestamp=1538464205631
+
+        //PROXY_FACTORY 即 ProxyFactory$Adpative的实现分析
+//        public com.alibaba.dubbo.rpc.Invoker getInvoker(java.lang.Object arg0, java.lang.Class arg1, com.alibaba.dubbo.common.URL arg2) throws com.alibaba.dubbo.rpc.RpcException {
+//            if (arg2 == null) throw new IllegalArgumentException("url == null");
+//            com.alibaba.dubbo.common.URL url = arg2;
+//            String extName = url.getParameter("proxy", "javassist");
+//            if(extName == null) throw new IllegalStateException("Fail to get extension(com.alibaba.dubbo.rpc.ProxyFactory) name from url(" + url.toString() + ") use keys([proxy])");
+//        //！！！！getExtension("javassist")方法，这个时候应该返回什么呢？是JavassistProxyFactory吗？不是。
+//        //因为有一个包装类StubProxyFactoryWrapper，所以这个时候执行的是StubProxyFactoryWrapper.getInvoker方法
+//            com.alibaba.dubbo.rpc.ProxyFactory extension = (com.alibaba.dubbo.rpc.ProxyFactory)ExtensionLoader.getExtensionLoader(com.alibaba.dubbo.rpc.ProxyFactory.class).getExtension(extName);
+//            return extension.getInvoker(arg0, arg1, arg2);
+//        }
+
+        // protocol的实现类：Protocol$Adpative
+        // Protocol extension = (Protocol)ExtensionLoader.getExtensionLoader(Protocol.class).getExtension("injvm")
+        // 这个时候得到的extension什么？ProtocolListenrWrapper(ProtocolFiterWrapper(InjvmProtocol))
         Exporter<?> exporter = protocol.export(
                 PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, local));
         exporters.add(exporter);
